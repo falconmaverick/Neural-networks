@@ -34,7 +34,7 @@ def relu(z):
     return np.maximum(0, z)
 
 def softmax(z):
-    exp_z = np.exp(z - np.max(z))
+    exp_z = np.exp(z - np.max(z, axis=0, keepdims=True))
     return exp_z / np.sum(exp_z, axis=0, keepdims=True)
 
 # Forward propagation
@@ -47,7 +47,7 @@ def forward_propagation(X, W1, b1, W2, b2, W3, b3):
     A3 = softmax(Z3)
     return Z1, A1, Z2, A2, Z3, A3
 
-# Compute loss
+# Compute cross-entropy loss
 def compute_loss(A3, Y):
     batch_size = Y.shape[1]
     loss = -np.sum(Y * np.log(A3 + 1e-8)) / batch_size
@@ -77,8 +77,8 @@ def update_parameters(W1, b1, W2, b2, W3, b3, dW1, db1, dW2, db2, dW3, db3, lear
     b3 -= learning_rate * db3
     return W1, b1, W2, b2, W3, b3
 
-# Training loop with validation
-def train_neural_network(x_train, y_train, x_val, y_val, epochs=10, learning_rate=0.01):
+# Training with mini-batch gradient descent
+def train_neural_network(x_train, y_train, x_val, y_val, epochs=10, learning_rate=0.01, batch_size=32):
     input_size = x_train.shape[1]
     hidden1_size = 128
     hidden2_size = 64
@@ -89,31 +89,37 @@ def train_neural_network(x_train, y_train, x_val, y_val, epochs=10, learning_rat
     val_losses = []
     
     for epoch in range(epochs):
-        Z1, A1, Z2, A2, Z3, A3 = forward_propagation(x_train.T, W1, b1, W2, b2, W3, b3)
-        loss = compute_loss(A3, y_train.T)
-        train_losses.append(loss)
-        dW1, db1, dW2, db2, dW3, db3 = back_propagation(x_train.T, y_train.T, Z1, A1, Z2, A2, Z3, A3, W1, W2, W3)
-        W1, b1, W2, b2, W3, b3 = update_parameters(W1, b1, W2, b2, W3, b3, dW1, db1, dW2, db2, dW3, db3, learning_rate)
+        indices = np.random.permutation(x_train.shape[0])
+        x_train_shuffled, y_train_shuffled = x_train[indices], y_train[indices]
+        
+        for i in range(0, x_train.shape[0], batch_size):
+            x_batch = x_train_shuffled[i:i+batch_size].T
+            y_batch = y_train_shuffled[i:i+batch_size].T
+            
+            Z1, A1, Z2, A2, Z3, A3 = forward_propagation(x_batch, W1, b1, W2, b2, W3, b3)
+            dW1, db1, dW2, db2, dW3, db3 = back_propagation(x_batch, y_batch, Z1, A1, Z2, A2, Z3, A3, W1, W2, W3)
+            W1, b1, W2, b2, W3, b3 = update_parameters(W1, b1, W2, b2, W3, b3, dW1, db1, dW2, db2, dW3, db3, learning_rate)
         
         _, _, _, _, _, A3_val = forward_propagation(x_val.T, W1, b1, W2, b2, W3, b3)
         val_loss = compute_loss(A3_val, y_val.T)
         val_losses.append(val_loss)
         
-        if epoch % 2 == 0:
-            print(f"Epoch {epoch}: Training Loss = {loss:.4f}, Validation Loss = {val_loss:.4f}")
-    
-    plt.plot(range(epochs), train_losses, label='Training Loss')
-    plt.plot(range(epochs), val_losses, label='Validation Loss')
-    plt.xlabel('Epochs')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.title('Learning Curve')
-    plt.show()
+        print(f"Epoch {epoch}: Validation Loss = {val_loss:.4f}")
     
     return W1, b1, W2, b2, W3, b3
 
-# Train model with validation
+# Train model with mini-batch
 W1, b1, W2, b2, W3, b3 = train_neural_network(x_train, y_train, x_val, y_val)
+
+# Display MNIST images
+def display_images():
+    fig, axes = plt.subplots(1, 5, figsize=(10, 3))
+    for i, ax in enumerate(axes):
+        ax.imshow(digits.images[i], cmap='gray')
+        ax.axis('off')
+    plt.show()
+
+display_images()
 
 # Evaluate on test set
 _, _, _, _, _, A3_test = forward_propagation(x_test.T, W1, b1, W2, b2, W3, b3)

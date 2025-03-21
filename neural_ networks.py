@@ -85,19 +85,31 @@ def train_neural_network(x_train, y_train, x_val, y_val, epochs=10, learning_rat
     output_size = 10
     
     W1, b1, W2, b2, W3, b3 = initialize_parameters(input_size, hidden1_size, hidden2_size, output_size)
+    train_losses = []
+    val_losses = []
     
     for epoch in range(epochs):
         Z1, A1, Z2, A2, Z3, A3 = forward_propagation(x_train.T, W1, b1, W2, b2, W3, b3)
         loss = compute_loss(A3, y_train.T)
+        train_losses.append(loss)
         dW1, db1, dW2, db2, dW3, db3 = back_propagation(x_train.T, y_train.T, Z1, A1, Z2, A2, Z3, A3, W1, W2, W3)
         W1, b1, W2, b2, W3, b3 = update_parameters(W1, b1, W2, b2, W3, b3, dW1, db1, dW2, db2, dW3, db3, learning_rate)
         
-        # Compute validation loss
         _, _, _, _, _, A3_val = forward_propagation(x_val.T, W1, b1, W2, b2, W3, b3)
         val_loss = compute_loss(A3_val, y_val.T)
+        val_losses.append(val_loss)
         
         if epoch % 2 == 0:
             print(f"Epoch {epoch}: Training Loss = {loss:.4f}, Validation Loss = {val_loss:.4f}")
+    
+    plt.plot(range(epochs), train_losses, label='Training Loss')
+    plt.plot(range(epochs), val_losses, label='Validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.title('Learning Curve')
+    plt.show()
+    
     return W1, b1, W2, b2, W3, b3
 
 # Train model with validation
